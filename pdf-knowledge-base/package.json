@@ -1,0 +1,56 @@
+{
+  "name": "pdf-knowledge-base",
+  "version": "1.0.0",
+  "description": "PDF知识库 - Typora风格的桌面PDF阅读器",
+  "main": "electron-main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "electron:dev": "electron .",
+    "electron:build": "vite build && electron-builder --win",
+    "start": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\""
+  },
+  "build": {
+    "appId": "com.pdf-knowledge-base.app",
+    "productName": "PDF知识库",
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PDF知识库"
+    },
+    "files": [
+      "dist/**/*",
+      "electron-main.js",
+      "preload.js",
+      "package.json"
+    ]
+  },
+  "dependencies": {
+    "adm-zip": "^0.6.0",
+    "pdfjs-dist": "^3.11.174"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.5.0",
+    "concurrently": "^8.2.0",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.0",
+    "vite": "^5.0.0",
+    "vue": "^3.3.0",
+    "wait-on": "^7.2.0"
+  }
+}
