@@ -154,7 +154,6 @@
         <div v-else class="pdf-container" ref="pdfContainerRef">
           <div v-for="n in totalPages" :key="n" class="pdf-page" :data-page="n">
             <canvas></canvas>
-            <div class="page-label">{{ n }} / {{ totalPages }}</div>
           </div>
         </div>
       </main>
@@ -1178,16 +1177,11 @@ html, body, #app {
 .pdf-container { padding: 24px 0; }
 .pdf-page {
   display: flex; flex-direction: column; align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 4px;
 }
 .pdf-page canvas {
   box-shadow: 0 1px 6px var(--shadow); border-radius: 2px;
   background: #fff; display: block;
-}
-.page-label {
-  font-size: 11px; color: var(--text-l); margin-top: 6px;
-  padding: 2px 10px; background: rgba(0,0,0,.04);
-  border-radius: 10px; user-select: none;
 }
 
 /* ---- 滚动条 ---- */
