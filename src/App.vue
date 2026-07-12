@@ -10,6 +10,9 @@
         <span class="folder-path" :title="folderPath" @click="openFolder">{{ folderPath || '选择知识库根目录' }}</span>
       </div>
       <div class="toolbar-right">
+        <button class="btn btn-mode" @click="toggleMode" :title="editMode ? '切换到阅读模式' : '切换到编辑模式'">
+          {{ editMode ? '&#128214; 阅读模式' : '&#9998; 编辑模式' }}
+        </button>
         <span v-if="folderPath" class="stat">共 {{ totalPdfCount }} 个PDF</span>
         <span v-if="currentPage > 0" class="stat">第 {{ currentPage }} / {{ totalPages }} 页</span>
       </div>
@@ -128,6 +131,7 @@
       >
         <div class="popup-item" @click="startRename(contextMenu.node)">&#9998; 重命名</div>
         <div v-if="contextMenu.node?.type === 'folder'" class="popup-item" @click="importIntoFolder(contextMenu.node)">&#128196; 导入PDF/ZIP</div>
+        <div v-if="contextMenu.node?.type === 'folder'" class="popup-item" @click="startCreateFolderIn(contextMenu.node)">&#128193; 新建文件夹</div>
         <div class="popup-item danger" @click="deleteItem(contextMenu.node)">&#128465; 删除</div>
       </div>
 
@@ -153,7 +157,10 @@
         <!-- PDF连续滚动 -->
         <div v-else class="pdf-container" ref="pdfContainerRef">
           <div v-for="n in totalPages" :key="n" class="pdf-page" :data-page="n">
-            <canvas></canvas>
+            <div style="position: relative; display: inline-block;">
+              <canvas></canvas>
+              <div class="text-layer" :data-text-page="n"></div>
+            </div>
           </div>
         </div>
       </main>
@@ -193,6 +200,7 @@ export default defineComponent({
     const currentPdfPath = ref('');
     const currentPdfDir = ref('');
     const userScale = ref(null); // 用户手动设置的缩放比例，null表示自动
+    const editMode = ref(false); // 阅读模式 / 编辑模式
 
     // ========== 树状侧边栏状态 ==========
     const treeData = ref([]);
@@ -204,6 +212,7 @@ export default defineComponent({
     // 新建文件夹内联输入
     const creatingFolder = ref(false);
     const newFolderName = ref('');
+    const currentCreateParent = ref(null); // 右键菜单创建子文件夹时的目标父节点
 
     // 拖拽状态
     let dragNode = null;
@@ -294,6 +303,11 @@ export default defineComponent({
     function closeMenus() {
       contextMenu.visible = false;
       addMenuVisible.value = false;
+    }
+
+    function toggleMode() {
+      editMode.value = !editMode.value;
+      if (currentPdfPath.value) reRenderAll();
     }
 
     function toggleAddMenu() {
@@ -468,8 +482,20 @@ export default defineComponent({
     // ========== 新建文件夹 ==========
 
     function startCreateFolderInput() {
+      currentCreateParent.value = null;
       addMenuVisible.value = false;
       contextMenu.visible = false;
+      creatingFolder.value = true;
+      newFolderName.value = '新建文件夹';
+      nextTick(() => {
+        const input = document.querySelector('.folder-name-input');
+        if (input) { input.focus(); input.select(); }
+      });
+    }
+
+    function startCreateFolderIn(folderNode) {
+      contextMenu.visible = false;
+      currentCreateParent.value = folderNode;
       creatingFolder.value = true;
       newFolderName.value = '新建文件夹';
       nextTick(() => {
@@ -483,16 +509,21 @@ export default defineComponent({
       creatingFolder.value = false;
       if (!name) return;
 
-      let targetDir = folderPath.value;
-      if (currentPdfDir.value) targetDir = currentPdfDir.value;
+      let targetDir = currentCreateParent.value ? currentCreateParent.value.path : folderPath.value;
+      if (!currentCreateParent.value && currentPdfDir.value) targetDir = currentPdfDir.value;
 
       const result = await window.electronAPI.createFolder(targetDir, name);
       if (result.success) {
         await loadTree();
+        if (currentCreateParent.value) {
+          currentCreateParent.value.expanded = true;
+          currentCreateParent.value._children = await window.electronAPI.listTree(targetDir);
+        }
         await refreshSubTree(targetDir);
       } else {
         alert('创建失败：' + result.error);
       }
+      currentCreateParent.value = null;
     }
 
     function cancelCreateFolder() {
@@ -818,6 +849,26 @@ export default defineComponent({
         const ctx = canvas.getContext('2d');
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         await page.render({ canvasContext: ctx, viewport }).promise;
+
+        // 编辑模式下渲染文本层
+        if (editMode.value) {
+          await nextTick();
+          const textLayerDiv = document.querySelector(`.text-layer[data-text-page="${pageNum}"]`);
+          if (textLayerDiv) {
+            textLayerDiv.innerHTML = '';
+            const textContent = await page.getTextContent();
+            pdfjsLib.renderTextLayer({
+              textContentSource: textContent,
+              container: textLayerDiv,
+              viewport,
+              textDivs: [],
+            });
+            textLayerDiv.style.display = '';
+          }
+        } else {
+          const textLayerDiv = document.querySelector(`.text-layer[data-text-page="${pageNum}"]`);
+          if (textLayerDiv) textLayerDiv.style.display = 'none';
+        }
       } catch (err) { console.error(`渲染第${pageNum}页失败:`, err); }
     }
 
@@ -938,11 +989,11 @@ export default defineComponent({
       folderPath, sidebarCollapsed, totalPages, currentPage, loading,
       currentFileName, currentPdfPath, treeData, flatTree, totalPdfCount,
       hoveredPath, addMenuVisible, addMenuStyle, renamingPath, renameValue,
-      creatingFolder, newFolderName,
-      dragIndicator, contextMenu,
+      creatingFolder, newFolderName, currentCreateParent,
+      dragIndicator, contextMenu, editMode,
       openFolder, toggleFolder, selectPdfFile, onReaderScroll,
-      toggleAddMenu, refreshTree, closeMenus, onContextMenu,
-      startCreateFolderInput, confirmCreateFolder, cancelCreateFolder,
+      toggleAddMenu, refreshTree, toggleMode, closeMenus, onContextMenu,
+      startCreateFolderInput, startCreateFolderIn, confirmCreateFolder, cancelCreateFolder,
       importPdfFile, importIntoFolder, startRename, confirmRename, cancelRename, deleteItem,
       onDragStart, onDragOver, onDragLeave, onDrop, onDragEnd,
     };
@@ -993,6 +1044,12 @@ html, body, #app {
 .btn:hover { background: var(--hover-bg); }
 .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
 .btn-primary:hover { background: var(--primary-hv); }
+.btn-mode {
+  padding: 4px 12px; font-size: 12px; border-radius: 4px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg);
+  transition: all .15s; white-space: nowrap; margin-right: 8px;
+}
+.btn-mode:hover { background: var(--hover-bg); }
 .btn-icon-only { padding: 6px 8px; font-size: 16px; border: none; background: transparent; }
 .btn-icon-only:hover { background: var(--hover-bg); }
 
@@ -1182,6 +1239,22 @@ html, body, #app {
 .pdf-page canvas {
   box-shadow: 0 1px 6px var(--shadow); border-radius: 2px;
   background: #fff; display: block;
+}
+.text-layer {
+  position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  overflow: hidden; opacity: 0.2; line-height: 1;
+  pointer-events: auto; user-select: text; display: none;
+}
+.text-layer span {
+  color: transparent; cursor: text;
+  position: absolute; white-space: pre;
+  transform-origin: 0% 0%;
+}
+.text-layer span::selection {
+  background: rgba(0, 100, 255, 0.3);
+}
+.text-layer span::-moz-selection {
+  background: rgba(0, 100, 255, 0.3);
 }
 
 /* ---- 滚动条 ---- */
