@@ -20,7 +20,7 @@
 
     <div class="main" @click="closeMenus">
       <!-- ==================== 左侧树状侧边栏 ==================== -->
-      <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }" @click.stop>
+      <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }" @click.stop="closeSidebarMenus">
         <div v-if="!sidebarCollapsed" class="sidebar-body">
           <!-- 侧边栏头部 -->
           <div class="sidebar-header">
@@ -301,6 +301,11 @@ export default defineComponent({
     // ========== 菜单管理 ==========
 
     function closeMenus() {
+      contextMenu.visible = false;
+      addMenuVisible.value = false;
+    }
+
+    function closeSidebarMenus() {
       contextMenu.visible = false;
       addMenuVisible.value = false;
     }
@@ -993,7 +998,7 @@ export default defineComponent({
       creatingFolder, newFolderName, currentCreateParent,
       dragIndicator, contextMenu, editMode,
       openFolder, toggleFolder, selectPdfFile, onReaderScroll,
-      toggleAddMenu, refreshTree, toggleMode, closeMenus, onContextMenu,
+      toggleAddMenu, refreshTree, toggleMode, closeMenus, closeSidebarMenus, onContextMenu,
       startCreateFolderInput, startCreateFolderIn, confirmCreateFolder, cancelCreateFolder,
       importPdfFile, importIntoFolder, startRename, confirmRename, cancelRename, deleteItem,
       onDragStart, onDragOver, onDragLeave, onDrop, onDragEnd,
