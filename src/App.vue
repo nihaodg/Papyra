@@ -856,14 +856,15 @@ export default defineComponent({
           const textLayerDiv = document.querySelector(`.text-layer[data-text-page="${pageNum}"]`);
           if (textLayerDiv) {
             textLayerDiv.innerHTML = '';
+            textLayerDiv.style.display = 'block';
             const textContent = await page.getTextContent();
-            pdfjsLib.renderTextLayer({
+            await pdfjsLib.renderTextLayer({
               textContentSource: textContent,
               container: textLayerDiv,
               viewport,
               textDivs: [],
             });
-            textLayerDiv.style.display = '';
+            pdfjsLib.setLayerDimensions(textLayerDiv, viewport);
           }
         } else {
           const textLayerDiv = document.querySelector(`.text-layer[data-text-page="${pageNum}"]`);
@@ -1242,8 +1243,8 @@ html, body, #app {
 }
 .text-layer {
   position: absolute; left: 0; top: 0; right: 0; bottom: 0;
-  overflow: hidden; opacity: 0.2; line-height: 1;
-  pointer-events: auto; user-select: text; display: none;
+  overflow: hidden; opacity: 0.2; line-height: 1.0;
+  user-select: text; z-index: 1;
 }
 .text-layer span {
   color: transparent; cursor: text;
