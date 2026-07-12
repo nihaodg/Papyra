@@ -86,8 +86,9 @@ function listDirectory(dirPath, configOrder) {
   folders.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
   files.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
 
-  // 应用自定义排序
-  const order = configOrder[dirPath] || [];
+  // 应用自定义排序（路径统一用 / 避免 Windows \ 不匹配）
+  const dirKey = (dirPath || '').replace(/\\/g, '/');
+  const order = configOrder[dirKey] || [];
   const ordered = [];
 
   for (const key of order) {
